@@ -1,0 +1,77 @@
+const express = require('express');
+const axios = require('axios');
+const app = express();
+const port = 3000;
+
+// Configuration
+const WINDOW_SIZE = 10;
+const TIMEOUT = 500;
+const QUALIFIED_IDS = {
+  'p': 'primes',
+  'f': 'fibonacci',
+  'e': 'even',
+  'r': 'random'
+};
+const BASE_URL = 'http://20.244.56.144/test/';
+
+// In-memory storage for numbers
+let storedNumbers = [];
+
+// Function to fetch numbers from the third-party server
+const fetchNumber = async (type) => {
+  try {
+    const endpoint = ${BASE_URL}${type};
+    const response = await axios.get(endpoint, { timeout: TIMEOUT });
+    return response.data.number;
+  } catch (error) {
+    console.error('Error fetching number:', error.message);
+    return null;
+  }
+};
+
+// Function to calculate the average of an array of numbers
+const calculateAverage = (numbers) => {
+  const sum = numbers.reduce((acc, num) => acc + num, 0);
+  return numbers.length ? (sum / numbers.length) : 0;
+};
+
+// API endpoint
+app.get('/numbers/:numberid', async (req, res) => {
+  const { numberid } = req.params;
+  
+  // Validate the number ID
+  if (!QUALIFIED_IDS.hasOwnProperty(numberid)) {
+    return res.status(400).json({ error: 'Invalid number ID' });
+  }
+
+  // Record the previous state of the window
+  const windowPrevState = [...storedNumbers];
+
+  // Fetch number from the third-party server
+  const newNumber = await fetchNumber(QUALIFIED_IDS[numberid]);
+
+  // Add new number to the window if it's unique
+  if (newNumber !== null && !storedNumbers.includes(newNumber)) {
+    if (storedNumbers.length >= WINDOW_SIZE) {
+      // Remove the oldest number if the window size is exceeded
+      storedNumbers.shift();
+    }
+    storedNumbers.push(newNumber);
+  }
+
+  // Calculate the average
+  const average = calculateAverage(storedNumbers);
+
+  // Respond with the required format
+  res.json({
+    windowPrevState,
+    windowCurrState: storedNumbers,
+    numbers: storedNumbers,
+    average
+  });
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(Average Calculator microservice running at http://localhost:${port});
+});
